@@ -3,9 +3,7 @@
 
 #include <gtk/gtk.h>
 
-typedef struct _CalEvent CalEvent;
-
-typedef struct _CalDay CalDay;
+typedef struct _Event Event;
 
 /**
  * Returns the instance of the widget.
