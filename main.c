@@ -4,31 +4,15 @@
 #include "calendar.h"
 
 /**
- * Gets called if the window state changes (minimize, maximize, fullscreen).
- * Sets the fullscreen variable depending on the state.
- * 
- * @param fullscreen pointer to the fullscreen variable
- */
-void on_state_changed(GtkWidget *window, GdkEventWindowState *event, gboolean *fullscreen)
-{
-	*fullscreen = (event->new_window_state & GDK_WINDOW_STATE_FULLSCREEN);
-}
-
-/**
  * Gets calles if any key is pressed on the main window.
- * Toggles fullscreen if the pressed key is F11.
- * 
- * @param fullscreen pointer to the fullscreen variable
+ * Sets fullscreen if pressed key is F10 or F11
  */
-void on_key_pressed(GtkWidget *window, GdkEventKey *event, gboolean *fullscreen)
+void on_key_pressed(GtkWidget *window, GdkEventKey *event, gpointer *user_data)
 {
+	if (event->keyval == 0xffc7) // F10
+		gtk_window_unfullscreen(GTK_WINDOW(window));
 	if (event->keyval == 0xffc8) // F11
-	{
-		if (*fullscreen)
-			gtk_window_unfullscreen(GTK_WINDOW(window));
-		else
 			gtk_window_fullscreen(GTK_WINDOW(window));
-	}
 }
 
 /**
@@ -37,13 +21,11 @@ void on_key_pressed(GtkWidget *window, GdkEventKey *event, gboolean *fullscreen)
 void activate(GtkApplication *app, gpointer user_data)
 {
 	GtkWidget *window;
-	gboolean *fullscreen = calloc(1, sizeof(gboolean));
 	
 	window = gtk_application_window_new(app);
 	gtk_window_set_title(GTK_WINDOW(window), "PSV Kanu EFB");
 	gtk_window_set_default_size(GTK_WINDOW(window), 600, 300);
-	g_signal_connect(G_OBJECT(window), "window-state-event", G_CALLBACK(on_state_changed), fullscreen);
-	g_signal_connect(G_OBJECT(window), "key-press-event", G_CALLBACK(on_key_pressed), fullscreen);
+	g_signal_connect(G_OBJECT(window), "key-press-event", G_CALLBACK(on_key_pressed), NULL);
 	
 	GtkWidget *box_main;
 	box_main = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);

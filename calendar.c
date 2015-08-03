@@ -1,6 +1,22 @@
 #include "calendar.h"
 #include <time.h>
 #include <assert.h>
+#include <stdlib.h>
+
+struct _CalEvent
+{
+	int group;
+	time_t time;
+	char *title;
+	char *description;
+};
+
+struct _CalDay
+{
+	int year, month, day;
+	int n_events;
+	CalEvent *events;
+};
 
 GtkWidget *calendar = NULL;
 GtkWidget *header = NULL;
@@ -42,11 +58,18 @@ void calendar_init()
 	//DAYGRID
 	daygrid = gtk_grid_new();
 	int d, w;
+	char datebuffer[8];
 	for (d = 0; d < 7; d++)
 	{
 		for (w = 0; w < 6; w++)
 		{
-			GtkWidget *day = gtk_button_new_with_label("day");
+			CalDay calday;
+			calday.day = 7 * w + d;
+			GtkWidget *day = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+			sprintf(datebuffer, "%02d", calday.day);
+			GtkWidget *day_date = gtk_label_new(datebuffer);
+			gtk_box_pack_start(GTK_BOX(day), day_date, FALSE, FALSE, 0);
+			//GtkWidget *day = gtk_button_new_with_label("day");
 			gtk_widget_set_hexpand(day, TRUE);
 			gtk_widget_set_vexpand(day, TRUE);
 			gtk_grid_attach(GTK_GRID(daygrid), day, d, w, 1, 1);
@@ -85,7 +108,7 @@ int days_in_month(int year, int month)
  */
 int first_day_of_year(int year)
 {
-	return ((year - 1) * 365L + (year - 1) / 4 - (year - 1) / 100 + (year - 1) / 400) % 7;
+	return (int) (((year - 1) * 365L + (year - 1) / 4 - (year - 1) / 100 + (year - 1) / 400) % 7);
 }
 
 /**
