@@ -1,8 +1,8 @@
 #include "event.h"
 #include <malloc.h>
 #include <sqlite3.h>
-#include <assert.h>
 #include <unistd.h>
+#include <string.h>
 
 sqlite3 *db;
 sqlite3_stmt *stmt;
@@ -31,6 +31,8 @@ EventList *event_list_new()
 {
 	EventList *list = malloc(sizeof(EventList));
 	list->first = NULL;
+	list->last = NULL;
+	list->iterator = NULL;
 	return list;
 }
 
@@ -96,8 +98,17 @@ Event *event_list_get_next(EventList *list)
 }
 
 /**
+ * Deletes the Event and the contained strings
+ */
+void event_delete(Event *event)
+{
+	free(event->title);
+	free(event->desc);
+	free(event);
+}
+
+/**
  * Deletes the complete EventList and all contained Events.
- * TODO: actually delete the Events.
  */
 void event_list_delete(EventList *list)
 {
@@ -107,60 +118,12 @@ void event_list_delete(EventList *list)
 	
 	while(node->next != NULL) {
 		next = node->next;
-		//free(node->event);
+		event_delete(node->event);
 		free(node);
 		node = next;
 	}
 	free(node);
 	free(list);
-}
-
-/**
- * Calculates the number of days in a month for a specific year and month.
- *
- * @param year the year
- * @param month the month 1:January, ... , 12:December
- */
-int days_in_month(int year, int month)
-{
-	assert(month > 0 && month < 13);
-	if (month == 4 || month == 6 || month == 9 || month == 11) {
-		return 30;
-	} else if (month == 2) {
-		if ((year % 4 == 0 && year % 100 != 0) || (year % 400 == 0))
-			return 29;
-		else
-			return 28;
-	} else {
-		return 31;
-	}
-}
-
-/**
- * Calculates the first weekday of the year for a specific year.
- * 0:Monday, ... ,6:Sunday
- *
- * @param year the year
- */
-int first_day_of_year(int year)
-{
-	return (int) (((year - 1) * 365L + (year - 1) / 4 - (year - 1) / 100 + (year - 1) / 400) % 7);
-}
-
-/**
- * Calculates the first weekday of the month for a specific year and month.
- * 0:Monday, ... ,6:Sunday
- *
- * @param year the year
- * @param month the month 1:January, ... , 12:December
- */
-int first_day_of_month(int year, int month)
-{
-	int offset = 0;
-	int m;
-	for (m = 1; m < month; m++)
-		offset += days_in_month(year, m);
-	return (first_day_of_year(year) + offset) % 7;
 }
 
 /**
@@ -212,11 +175,22 @@ void db_read_all()
 		printf("%d:Event %s at %lld: %s\n",sqlite3_column_int(stmt, 0), sqlite3_column_text(stmt, 2), sqlite3_column_int64(stmt, 1), sqlite3_column_text(stmt, 3));
 	}
 	if (rc != SQLITE_DONE) {
-		fprintf(stderr, "SQL Error: %s\n", zErrMsg);
-		sqlite3_free(zErrMsg);
+		fprintf(stderr, "SQL error(%d): %s\n", rc, sqlite3_errmsg(db));
 	} else {
 		printf("SQLed successfully\n");
 	}
+}
+
+/**
+ * Debugging function that will be deleted
+ */
+void print_event(Event *event)
+{
+	if (event == NULL) {
+		printf("Event is NULL");
+		return;
+	}
+	printf("Event: id=%d, time=%lld, title=%s, description=%s\n", event->id, event->time, event->title, event->desc);
 }
 
 /**
@@ -224,12 +198,30 @@ void db_read_all()
  * The list must be deleted with event_list_delete().
  *
  * @param start start of the interval (formated as year * 10^8 + month * 10^6 + day * 10^4 + hour * 10^2 + minute)
- * @param end end of the intervar (formated same as start)
- * @return the resulting EventList
+ * @param end end of the interval (formated same as start)
+ * @return the resulting EventList or NULL if an error occured
  */
 EventList *db_read_interval(int64_t start, int64_t end)
 {
-	return NULL;
+	EventList *list = event_list_new();
+
+	sqlite3_prepare_v2(db, "SELECT * FROM events WHERE time BETWEEN ?1 AND ?2", -1, &stmt, NULL);
+	sqlite3_bind_int64(stmt, 1, start);
+	sqlite3_bind_int64(stmt, 2, end);
+	while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
+		Event *event = malloc(sizeof(Event));
+		event->id = sqlite3_column_int(stmt, 0);
+		event->time = sqlite3_column_int64(stmt, 1);
+		event->title = strdup((const char*) sqlite3_column_text(stmt, 2));
+		event->desc = strdup((const char*) sqlite3_column_text(stmt, 3));
+		event_list_insert(list, event);
+	}
+	if (rc != SQLITE_DONE) {
+		fprintf(stderr, "SQL error(%d): %s\n", rc, sqlite3_errmsg(db));
+		return NULL;
+	}
+	sqlite3_finalize(stmt);
+	return list;
 }
 
 /**

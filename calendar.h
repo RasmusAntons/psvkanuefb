@@ -14,4 +14,8 @@ GtkWidget *calendar_get_instance();
  */
 void calendar_init();
 
+int days_in_month(int year, int month);
+int first_day_of_year(int year);
+int first_day_of_month(int year, int month);
+
 #endif
