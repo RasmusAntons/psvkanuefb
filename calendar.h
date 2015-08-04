@@ -3,8 +3,6 @@
 
 #include <gtk/gtk.h>
 
-typedef struct _Event Event;
-
 /**
  * Returns the instance of the widget.
  * Creates new instance when called for the first time.

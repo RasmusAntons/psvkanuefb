@@ -1,22 +1,17 @@
 #include "calendar.h"
 #include <sqlite3.h>
-#include <time.h>
 #include <assert.h>
 #include <stdlib.h>
+#include "event.h"
 
-struct _Event
-{
-	unsigned int month;
-	unsigned int day;
-	unsigned int time;
-	int group;
-	char *title;
-	char *description;
-};
+void db_read_all();
+void db_open();
 
 GtkWidget *calendar = NULL;
 GtkWidget *header = NULL;
 GtkWidget *daygrid = NULL;
+
+EventList *eventlist;
 
 sqlite3 *db;
 char *zErrMsg = NULL;
@@ -43,16 +38,17 @@ GtkWidget *calendar_get_instance()
 void calendar_init()
 {
 	db_open();
+	/*
 	Event event;
-	event.month = 201507;
-	event.day = 25;
-	event.time = 730;
+	event.time = 201509041230UL;
 	event.title = "Test";
 	event.description = "Testevent";
-	insert_event(&event);
+	db_write_event(&event);
+	*/
+	db_read_all();
 	calendar = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 	
-	//HEADER
+	//HEADER BAR
 	header = gtk_header_bar_new();
 	gtk_header_bar_set_title(GTK_HEADER_BAR(header), "August");
 	gtk_header_bar_set_subtitle(GTK_HEADER_BAR(header), "2015");
@@ -87,9 +83,10 @@ void calendar_init()
  * callback function for debugging
  * prints stuff out
  */
-static int callback(void *NotUsed, int argc, char **argv, char **azColName) {
+static int callback(void *data, int argc, char **argv, char **azColName){
 	int i;
-	for(i = 0; i < argc; i++) {
+	fprintf(stderr, "%s: ", (const char*)data);
+	for(i=0; i<argc; i++){
 		printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
 	}
 	printf("\n");
@@ -104,8 +101,6 @@ void db_create()
 	rc = sqlite3_open("calendar.db", &db);
 	sql = "CREATE TABLE events ( " \
 	      "id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE, " \
-	      "month INTEGER NOT NULL, " \
-	      "day INTEGER NOT NULL, " \
 	      "time INTEGER NOT NULL, " \
 	      "title TEXT, " \
 	      "description TEXT )";
@@ -115,6 +110,42 @@ void db_create()
 		sqlite3_free(zErrMsg);
 	} else {
 		printf("Empty calendar created\n");
+	}
+}
+
+/**
+ * callback function for debugging
+ * prints stuff out
+ */
+static int read_event_callback(void *data /* EventList* */, int argc, char **argv, char **azColName){
+	EventList *eventlist = (EventList *)data;
+	Event *event = malloc(sizeof(Event));
+	if (argc != 4)
+		fprintf(stderr, "Whats wrong with my database? Row has %d entries instead of 4\n", argc);
+
+	event->id = atoi(argv[0]);
+	printf("%d\n", event->id);
+
+
+	int i;
+	for(i=0; i<argc; i++){
+		printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
+	}
+	return 0;
+}
+
+void db_read_all()
+{
+	if (eventlist)
+		event_list_delete(eventlist);
+	eventlist = event_list_new();
+	sql = "SELECT * FROM events";
+	rc = sqlite3_exec(db, sql, read_event_callback, (void *)eventlist, &zErrMsg);
+	if (rc != SQLITE_OK) {
+		fprintf(stderr, "SQL Error: %s\n", zErrMsg);
+		sqlite3_free(zErrMsg);
+	} else {
+		printf("SQLed successfully\n");
 	}
 }
 
@@ -134,15 +165,16 @@ void db_open()
  * Note: asprintf might not work on Windows
  * @param event the Event
  */
-int insert_event(Event *event)
+int db_write_event(Event *event)
 {
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "CannotResolve"
-	asprintf(&sql, "INSERT INTO events (month, day, time, title, description) VALUES (%d, %d, %d, '%s', '%s')",
-	         event->month, event->day, event->time, event->title, event->description);
+	asprintf(&sql, "INSERT INTO events (time, title, description) VALUES (%lu, '%s', '%s')",
+	         event->time, event->title, event->description);
 #pragma clang diagnostic pop
 	printf("%s\n", sql);
 	rc = sqlite3_exec(db, sql, NULL, 0, &zErrMsg);
+	free(sql);
 	if (rc == SQLITE_OK) {
 		return 1;
 	} else {

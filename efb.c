@@ -20,8 +20,6 @@ void efb_init()
 {
 	efb = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 	WebKitWebView *web = WEBKIT_WEB_VIEW(webkit_web_view_new());
-	WebKitSettings *settings = webkit_web_view_get_settings(web);
-	webkit_settings_set_enable_fullscreen(settings, FALSE);
 	
 	gtk_box_pack_start(GTK_BOX(efb), GTK_WIDGET(web), TRUE, TRUE, 0);
 	webkit_web_view_load_uri(web, "http://rasmusantons.de/");

@@ -12,6 +12,8 @@ add_definitions(${GTK3_CFLAGS_OTHER} ${WEBKIT2_CFLAGS_OTHER})
 set(SOURCE_FILES
     calendar.c
     calendar.h
+    event.c
+    event.h
     efb.c
     efb.h
     main.c)
