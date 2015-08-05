@@ -113,16 +113,16 @@ void event_delete(Event *event)
 void event_list_delete(EventList *list)
 {
 	EventNode *node;
-	EventNode *next;
+	EventNode *prev;
 	node = list->first;
-	
-	while(node->next != NULL) {
-		next = node->next;
+
+	while (node != NULL)
+	{
 		event_delete(node->event);
-		free(node);
-		node = next;
+		prev = node;
+		node = node->next;
+		free(prev);
 	}
-	free(node);
 	free(list);
 }
 
